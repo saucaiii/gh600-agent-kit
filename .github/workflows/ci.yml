@@ -1,0 +1,62 @@
+# Success criteria as required checks + durable evidence (GH-600 Domains 1, 4).
+# Required status checks: "test", "codeql".
+name: CI
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+permissions:
+  contents: read   # least privilege by default; jobs elevate only what they need
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Test (results saved as evidence)
+        run: |
+          mkdir -p results
+          npm test 2>&1 | tee results/test-output.txt
+          exit "${PIPESTATUS[0]}"
+      - run: npm run lint --if-present
+      - name: Upload test evidence
+        if: always()   # keep evidence even when tests fail, for debugging
+        uses: actions/upload-artifact@v4
+        with:
+          # Traceable: names the commit and run that produced it.
+          name: test-results-${{ github.sha }}-run${{ github.run_id }}
+          path: results/
+          retention-days: 30
+      - name: Evidence summary
+        if: always()
+        run: |
+          {
+            echo "### Evidence"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            echo "- Artifact: test-results-${{ github.sha }}-run${{ github.run_id }}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  codeql:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write   # only what CodeQL needs to upload SARIF results
+    steps:
+      - uses: actions/checkout@v4
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript-typescript
+      - uses: github/codeql-action/analyze@v3

@@ -1,0 +1,3 @@
+# Copy to .agent/scope.txt for a task (new-task.sh does this for you). One path prefix per line.
+src/
+tests/
