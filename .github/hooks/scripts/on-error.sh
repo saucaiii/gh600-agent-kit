@@ -9,6 +9,6 @@ root="$(repo_root)"
   echo "## Escalation needed ($(date -u +%Y-%m-%dT%H:%MZ), copilot)"
   echo "- What failed: $(jq -r '(.error // .message // "see audit.log") | tostring | .[0:300]' <<<"$HOOK_INPUT")"
   echo "- Root cause: (classify: reasoning error | tool misuse | context/environment issue)"
-  echo "- Evidence: .agent/audit.log, workflow run logs"
+  echo "- Evidence: .agent-control/audit.log, workflow run logs"
 } >> "$root/.agent/state.md"
 exit 0

@@ -14,7 +14,7 @@ Legend: **E** = enforced (hook, CI, or GitHub setting blocks it) · **G** = guid
 | Planning distinct from execution | read-only `planner` tool lists | E |
 | Output a structured plan | planner output format; `.agent/plan.md` | G |
 | Validate agent plans | `require-plan` CI job; human review | E |
-| Prevent action until plan approved | `policy.sh` blocks high-risk edits until `Approved: yes` | E |
+| Prevent action until plan approved | `policy.sh` blocks high-risk edits until a human runs `approve-plan.sh`; approval is bound to the plan hash and agents cannot write it | E |
 | Degree of autonomy incl. guardrails | risk table in `CLAUDE.md`; `high-risk-plan-declared` job | E |
 | Inspectable artifacts in standard tooling | PR, commits, `ci.yml` artifacts, step summaries | E |
 | Human intervention without slowing delivery | only high/critical gated; low risk can auto-merge | G |
@@ -31,16 +31,16 @@ Legend: **E** = enforced (hook, CI, or GitHub setting blocks it) · **G** = guid
 | Configure MCP registries | `README` → enterprise registry notes (enterprise feature) | G |
 | Configure MCP allow lists | `tools` allowlist in `mcp-config.json`; `copilot/managed-settings.example.json` | E |
 | Evaluate execution context | `copilot-setup-steps.yml` comments; `CLAUDE.md` environment section | G |
-| Scope agent to a repository | default GitHub MCP token is repo-scoped read-only; `.agent/scope.txt` | E |
+| Scope agent to a repository | default GitHub MCP token is repo-scoped read-only; human-owned `.agent-control/scope.txt` | E |
 | Invoke an agent in CI | `agent-ci.yml` (Copilot CLI, `-p`, `--allow-tool`, `--no-ask-user`) | E |
 | Branch-based scope | `policy.sh` blocks work on `main`; `agent/*` branches | E |
 | Autonomous branches and PRs | implementer creates `agent/*` branch + draft PR | G |
 | Environment-specific constraints | `copilot-setup-steps.yml`; `copilot` environment secrets; firewall | E |
 | Error handling | `on-failure.sh`, `on-error.sh`, `if: always()` evidence steps | E |
-| Retries | `on-failure.sh` (max 2); retry loop in `agent-ci.yml` | E |
+| Retries | `on-failure.sh` (2 retries, consecutive, flags unchanged retries); retry loop in `agent-ci.yml` | E |
 | Rollbacks | `git revert` rule; `deploy.yml` explicit-ref redeploy | E |
 | Escalation paths | `on-failure.sh` ESCALATE; `escalate` job in `agent-ci.yml` | E |
-| Traceability and accountability | `audit-log.sh`, Copilot `post-tool.sh`, artifacts named by SHA + run | E |
+| Traceability and accountability | `audit-log.sh`, Copilot `post-tool.sh` → `.agent-control/audit.log` (agents cannot alter it); artifacts named by SHA + run | E |
 
 ## Domain 3: Manage memory, state, and execution (10–15%)
 
@@ -91,10 +91,10 @@ Legend: **E** = enforced (hook, CI, or GitHub setting blocks it) · **G** = guid
 
 | Skill | Where | Type |
 | --- | --- | --- |
-| Classify actions by risk | risk table; `flag-high-risk` job | E |
-| Assign autonomy levels | risk table → autonomy column | E |
-| Identify actions needing human judgment | high/critical rows; `Approved: yes` | E |
-| Block policy-violating actions | `policy.sh` (both tools); deny lists | E |
+| Classify actions by operational, security, and compliance risk | three-axis rule + risk table in `CLAUDE.md`; `flag-high-risk` job | E |
+| Assign autonomy levels (security + Responsible AI standards) | risk table → autonomy column; Responsible AI section in `CLAUDE.md`; PR template RAI checklist | E |
+| Identify actions needing human judgment | high/critical rows; `approve-plan.sh`; human-only scripts | E |
+| Block security, compliance, or Responsible AI violations | `policy.sh` (both tools, file and shell paths); deny lists; fails closed if `jq` or the policy is missing | E |
 | Least privilege permissions + contexts | `permissions:` per job; read-only agents; read-only MCP; default token read-only | E |
 | Explicit authorization for irreversible changes | `deploy.yml`: human-only, environment approval, explicit ref | E |
-| Minimize approvals that don't reduce risk | low risk auto-merge; gates only on high/critical | G |
+| Minimize approvals that don't reduce risk | gates only on high/critical; solo ruleset profile avoids unmeetable self-approval | G |

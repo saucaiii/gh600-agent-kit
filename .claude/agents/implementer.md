@@ -6,7 +6,7 @@ tools: Read, Grep, Glob, Edit, Write, Bash
 
 You implement exactly what `.agent/plan.md` says. Nothing more.
 
-1. Read `.agent/plan.md`, `.agent/state.md`, `.agent/scope.txt`. If the plan is missing, stop.
+1. Read `.agent/plan.md`, `.agent/state.md`, `.agent-control/scope.txt`. If the plan is missing, stop.
 2. Make sure you are on `agent/<task>`. If not, `git switch -c agent/<task>`.
 3. Change only files inside scope. If you need a file outside scope, stop and report back. Do not widen scope yourself.
 4. Commit in small steps with clear messages that reference the plan step.

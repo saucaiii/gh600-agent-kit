@@ -10,25 +10,32 @@ This file is guidance. Enforcement lives in `.agent-policy/policy.sh` (called by
 
 1. **Load state.** Read `.agent/state.md` and `.agent/decisions.md`. Do not repeat finished steps or contradict a decision. Re-confirm decisions past their `review-by` date.
 2. **Classify risk** with the table below.
-3. **Plan.** Use the read-only `planner` subagent. Save to `.agent/plan.md` with: Risk, Approved, Goal, Scope, Steps, Success criteria, Risks + mitigations, Rollback / escalation.
-4. **Gate.** High or critical: stop until a human sets `Approved: yes` in the plan. The policy blocks high-risk edits until then.
-5. **Isolate.** Work on `agent/<task>`. For parallel work use `scripts/agent/new-task.sh <task> <scope...>`, which gives each task its own branch, worktree, and scope.
-6. **Implement** only inside `.agent/scope.txt`. Need more: stop and update the plan.
+3. **Plan.** Use the read-only `planner` subagent. Save to `.agent/plan.md` with: Risk, Goal, Scope, Steps, Success criteria, Risks + mitigations, Rollback / escalation.
+4. **Gate.** High or critical: stop and ask the human to run `scripts/agent/approve-plan.sh`. It records the plan's hash in `.agent-control/approval`; the policy blocks high-risk edits until then, and any later edit to the plan voids the approval.
+5. **Isolate.** Work on `agent/<task>`. For parallel work the human runs `scripts/agent/new-task.sh <task> <scope...>`, which gives each task its own branch, worktree, and scope.
+6. **Implement** only inside `.agent-control/scope.txt` (human-owned; you cannot edit it). Need more: stop, update the plan, ask the human.
 7. **Validate.** Run tests, then `scripts/agent/eval-report.sh`, then the `reviewer` subagent.
 8. **Record.** Progress and handoffs in `.agent/state.md`. Decisions in `.agent/decisions.md`.
 9. **Propose.** Push the branch, open a **draft** PR with the template filled in, including Evidence. Never merge, never approve.
-10. **Close.** `scripts/agent/close-task.sh` archives and resets short-term memory.
+10. **Close.** The human runs `scripts/agent/close-task.sh`, which archives and resets short-term memory.
 
 ## Risk and autonomy
 
+Classify every action on three axes and take the **highest**:
+- **Operational:** can it break the build, a deploy, or other people's work? Is it reversible?
+- **Security:** does it touch auth, secrets, permissions, agent tools, MCP servers, or hooks?
+- **Compliance:** does it touch personal data, money, licences, audit evidence, or Responsible AI rules?
+
 | Risk | Paths / actions | Autonomy |
 | --- | --- | --- |
-| Low | `docs/`, formatting, comments | Plan + execute in one PR. Auto-merge allowed after checks. |
-| Medium | `src/`, tests, dependency bumps | Plan + execute, 1 human review |
-| High | `.github/workflows|agents|hooks/`, `.agent-policy/`, `.mcp.json`, `infra/`, `src/auth/`, `CODEOWNERS` | Plan-first. Human approval before editing. Code owner review. |
-| Critical | Deploys, secrets, repo settings, funds or keys | Prepare only. A human executes (`deploy.yml` is human-started and environment-gated). |
+| Low | `docs/`, formatting, comments | Plan + execute in one PR. May use auto-merge (it still waits for every required check and review). |
+| Medium | `src/`, tests, dependency bumps | Plan + execute. A human reviews and merges. |
+| High | `.github/workflows|agents|hooks/`, `.claude/agents/`, `.mcp.json`, `scripts/`, `github/`, `copilot/`, `infra/`, `src/auth/`, `CODEOWNERS` | Plan-first. Human approval (`approve-plan.sh`) before editing. Code owner review. |
+| Critical | Deploys, secrets, repo settings, funds or keys, personal data | Prepare only. A human executes (`deploy.yml` is human-started and environment-gated). |
+| Never | `.claude/settings*.json`, `.claude/hooks/`, `.agent-policy/`, `.agent-control/`, secrets | Agents cannot write these at all. |
 
 When unsure, pick the higher level. Changing an agent's tools, an MCP server, or a hook is always **high**: it changes what agents can do.
+Gates exist only where they reduce real risk: low and medium work is not held for plan approval.
 
 ## Tools, MCP, and environment
 
@@ -36,17 +43,18 @@ When unsure, pick the higher level. Changing an agent's tools, an MCP server, or
 - MCP: only servers listed in `.mcp.json` (Claude Code) or `copilot/mcp-config.json` (Copilot) are enabled. Each allows only named read-only tools, never `*`. Tokens come from environment secrets at runtime (`GITHUB_MCP_PAT`, `COPILOT_MCP_*`), never from files.
 - Adding or widening an MCP server is a high-risk change, reviewed like a new dependency.
 - Never read, print, or write secrets (`.env*`, `*.pem`, `*.key`, `secrets/`). Refer to them by variable name only.
-- Never edit `.claude/settings.json`, `.claude/hooks/`, or `.agent-policy/`.
+- Never edit `.claude/settings*.json`, `.claude/hooks/`, `.agent-policy/`, or `.agent-control/`, by any tool including the shell.
 - Never use `--force`, `--no-verify`, `reset --hard`, `rebase`, `gh pr merge`, `gh secret set`, or start a deploy.
+- Never run the human-only scripts: `approve-plan.sh`, `close-task.sh`, `apply-github-settings.sh`.
 - Never pipe a download into a shell.
 - Cloud agent environments are prepared by `.github/workflows/copilot-setup-steps.yml` and have their own secrets (the `copilot` environment). Do not assume CI secrets exist there.
 
 ## Errors, retries, escalation
 
-- Retry a failing step at most **2 times**, changing something each time. A hook counts failures and tells you when to stop.
+- Retry a failing step at most **2 times**, changing something each time. A hook counts consecutive failures of the same command and tells you to escalate on the 3rd. Retrying without changing anything is flagged.
 - Before each retry, classify the root cause in `.agent/state.md`: `reasoning error`, `tool misuse`, or `context/environment issue`.
 - **Rollback:** revert your own commits (`git revert`), never rewrite history. Deploys roll back by redeploying a previous explicit commit or tag.
-- **Escalate** after the 2nd failure, any scope change, or any high-risk surprise. Report: what failed, root cause, what you tried, evidence, suggested next step.
+- **Escalate** after the 2nd failed retry, any scope change, or any high-risk surprise. Report: what failed, root cause, what you tried, evidence, suggested next step.
 
 ## Memory and state
 
@@ -55,7 +63,8 @@ When unsure, pick the higher level. Changing an agent's tools, an MCP server, or
 | Short-term | `.agent/state.md` | One task | Under 60 lines. Task-relevant only. Archived and reset by `close-task.sh`. Stale after 7 days or if its branch differs from yours. |
 | Long-term | `.agent/decisions.md` | Across tasks | Append only: `- YYYY-MM-DD \| decision \| reason \| alternatives rejected \| review-by YYYY-MM-DD`. Expired entries must be re-confirmed. |
 | External | Issues, PRs, commits | Permanent | The durable record. Plans and evidence live in the PR. |
-| Audit | `.agent/audit.log` | 30 days, then archived | Written by hooks. Never edit. |
+| Control | `.agent-control/` (scope, approval) | One task | Human-owned. Agents read, never write. |
+| Audit | `.agent-control/audit.log` | 30 days, then archived | Written by hooks. Agents cannot edit or delete it. |
 
 - No secrets, raw logs, or guesses stated as facts in memory.
 - Shared state: Claude Code and Copilot read the same `.agent/` files and `CLAUDE.md`, so they never work from different context.
@@ -82,3 +91,12 @@ When a result fails, tune the right thing: instructions (reasoning errors), tool
 - Every handoff is written down: agent, input, output, result.
 - Watch for: two agents editing the same file, duplicated work, contradictory outputs, stalled agents (no new commits or notes). Stop and escalate.
 - Agent lifecycle (add, update, retire) follows `docs/agent-lifecycle.md`.
+
+## Responsible AI
+
+- **Human accountability.** A named human approves high-risk plans and merges every PR. Agents never act as the final decision-maker.
+- **Transparency.** Every agent PR fills in the Agent section of the template (which agents, handoffs). Agent commits stay on `agent/*`, `claude/*` or `copilot/*` branches so their origin is visible.
+- **Privacy.** Never put personal data, customer data, or credentials into prompts, plans, memory files, issues, or logs. Use synthetic or redacted examples.
+- **Fairness and safety.** Flag in the plan any change that makes automated decisions about people (access, eligibility, scoring, money). Those are **critical**: prepare only.
+- **Licences and provenance.** Do not paste code of unknown origin. Note any new third-party code or dependency and its licence in the PR.
+- **Honest reporting.** Report failures, skipped steps, and uncertainty as they are. Never claim a check passed that you did not run.

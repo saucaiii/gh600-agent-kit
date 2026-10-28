@@ -21,7 +21,7 @@ overlaps() { [[ "$1" == "$2"* || "$2" == "$1"* ]]; }
 
 conflict=0
 while read -r other; do
-  [[ "$other" == "$root" || ! -f "$other/.agent/scope.txt" ]] && continue
+  [[ "$other" == "$root" || ! -f "$other/.agent-control/scope.txt" ]] && continue
   while read -r theirs; do
     theirs="${theirs%%#*}"; theirs="$(xargs <<<"$theirs")"; [[ -z "$theirs" ]] && continue
     for mine in "$@"; do
@@ -29,14 +29,14 @@ while read -r other; do
         echo "CONFLICT: '$mine' overlaps '$theirs' owned by the task in $other" >&2; conflict=1
       fi
     done
-  done < "$other/.agent/scope.txt"
+  done < "$other/.agent-control/scope.txt"
 done < <(git worktree list --porcelain | awk '/^worktree /{print $2}')
 (( conflict )) && { echo "Run these tasks in sequence, or narrow the scopes." >&2; exit 3; }
 
 mkdir -p "$wt_base"
 git worktree add -q -b "$branch" "$wt"
-mkdir -p "$wt/.agent"
-printf '%s\n' "$@" > "$wt/.agent/scope.txt"
+mkdir -p "$wt/.agent" "$wt/.agent-control"
+printf '%s\n' "$@" > "$wt/.agent-control/scope.txt"
 cat > "$wt/.agent/state.md" <<EOF
 # Working memory (short-term). Keep under 60 lines.
 Branch: $branch

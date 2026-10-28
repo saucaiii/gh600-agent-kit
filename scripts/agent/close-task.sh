@@ -6,15 +6,16 @@
 set -euo pipefail
 root="$(git rev-parse --show-toplevel)"; cd "$root"
 RETENTION_DAYS="${AUDIT_RETENTION_DAYS:-30}"
-task="$(grep -iE '^task:' .agent/state.md 2>/dev/null | head -1 | sed -E 's/^[Tt]ask:\s*//')"
-task="${task:-untitled}"
+task="$(grep -iE '^task:' .agent/state.md 2>/dev/null | head -1 | sed -E 's/^[Tt]ask:[[:space:]]*//')"
+# state.md is agent-written, so sanitize before using it in a path.
+task="$(printf '%s' "${task:-untitled}" | tr -c 'A-Za-z0-9._-' '-')"
 stamp="$(date +%Y-%m-%d)"
-arch=".agent/archive/${stamp}-${task}"
+arch=".agent-control/archive/${stamp}-${task}"
 mkdir -p "$arch"
 
-# 1. Archive the task's short-term memory and plan (kept for audit, out of the agent's context).
-for f in state.md plan.md scope.txt eval.md failures.json; do
-  [[ -f ".agent/$f" ]] && mv ".agent/$f" "$arch/"
+# 1. Archive the task's memory, plan, scope and approval (kept for audit, out of the agent's context).
+for f in .agent/state.md .agent/plan.md .agent/eval.md .agent-control/scope.txt .agent-control/approval .agent-control/failures.json; do
+  [[ -f "$f" ]] && mv "$f" "$arch/"
 done
 
 # 2. Reset short-term memory.
@@ -29,10 +30,11 @@ Status: idle
 EOF
 
 # 3. Prune audit log entries older than the retention window into the archive.
-if [[ -f .agent/audit.log ]]; then
+log=.agent-control/audit.log
+if [[ -f "$log" ]]; then
   cutoff="$(date -u -d "-${RETENTION_DAYS} days" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-"${RETENTION_DAYS}"d +%Y-%m-%dT%H:%M:%SZ)"
-  jq -c --arg c "$cutoff" 'select(.ts < $c)' .agent/audit.log >> "$arch/audit-expired.log" 2>/dev/null || true
-  jq -c --arg c "$cutoff" 'select(.ts >= $c)' .agent/audit.log > .agent/audit.tmp 2>/dev/null && mv .agent/audit.tmp .agent/audit.log
+  jq -c --arg c "$cutoff" 'select(.ts < $c)' "$log" >> "$arch/audit-expired.log" 2>/dev/null || true
+  jq -c --arg c "$cutoff" 'select(.ts >= $c)' "$log" > "$log.tmp" 2>/dev/null && mv "$log.tmp" "$log"
 fi
 
 echo "Closed task '$task'. Archived to $arch. Short-term memory reset."

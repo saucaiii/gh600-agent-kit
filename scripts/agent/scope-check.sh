@@ -6,11 +6,12 @@
 set -uo pipefail
 
 if [[ -n "${1:-}" && -f "$1" ]]; then body="$(cat "$1")"; else body="${PR_BODY:-}"; fi
-scope_line="$(printf '%s\n' "$body" | grep -iE '\**Scope[^:]*:\**' | head -1 | sed -E 's/.*:\**\s*//')"
+scope_line="$(printf '%s\n' "$body" | grep -iE '\**Scope[^:]*:\**' | head -1 | sed -E 's/.*:\**[[:space:]]*//')"
 [[ -z "$scope_line" ]] && { echo "No scope declared in the plan."; exit 1; }
 
-# Prefixes: split on commas/spaces, strip backticks.
-mapfile -t prefixes < <(tr ',' ' ' <<<"$scope_line" | tr -s ' ' '\n' | tr -d '`' | grep -v '^$')
+# Prefixes: split on commas/spaces, strip backticks. (while-read, not mapfile: macOS ships bash 3.2)
+prefixes=()
+while IFS= read -r p; do [[ -n "$p" ]] && prefixes+=("$p"); done < <(tr ',' ' ' <<<"$scope_line" | tr -s ' ' '\n' | tr -d '`')
 prefixes+=(".agent/")
 
 out=()

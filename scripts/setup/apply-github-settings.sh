@@ -2,15 +2,33 @@
 # Apply the platform guardrails with the GitHub CLI.
 # Dry run by default. Add --apply to make changes.
 #
-#   scripts/setup/apply-github-settings.sh owner/repo            # show what would happen
-#   scripts/setup/apply-github-settings.sh owner/repo --apply    # do it
+#   scripts/setup/apply-github-settings.sh owner/repo --solo           # show what would happen
+#   scripts/setup/apply-github-settings.sh owner/repo --solo --apply   # do it
+#
+# Pick one profile:
+#   --solo  You are the only human. GitHub never lets a PR author approve their own PR, and
+#           agents open PRs with your login, so required approvals would lock you out.
+#           Solo keeps: PR required, all checks required, no force push/deletion.
+#           The human gate is the plan approval + you pressing Merge (agents cannot merge).
+#   --team  Another person reviews. Adds 1 approval, code owner review, last-push approval.
+#           Also the right choice if agents use their own bot identity (then you approve their PRs).
 #
 # Needs: gh auth login (admin on the repo), jq.
 # Creates: main ruleset, production environment with you as required reviewer,
 # read-only default GITHUB_TOKEN, secret scanning + push protection (where available).
 set -euo pipefail
-repo="${1:?owner/repo}"; apply=false; [[ "${2:-}" == "--apply" ]] && apply=true
+repo=""; apply=false; profile=""
+for a in "$@"; do
+  case "$a" in
+    --apply) apply=true ;;
+    --solo) profile=solo ;;
+    --team) profile=team ;;
+    *) repo="$a" ;;
+  esac
+done
+[[ -n "$repo" && -n "$profile" ]] || { echo "Usage: $0 owner/repo --solo|--team [--apply]" >&2; exit 1; }
 here="$(cd "$(dirname "$0")" && pwd)"; root="$(cd "$here/../.." && pwd)"
+ruleset="$root/github/ruleset-main.json"; [[ "$profile" == solo ]] && ruleset="$root/github/ruleset-main.solo.json"
 
 run() {
   echo "+ $*"
@@ -22,8 +40,8 @@ me="$(gh api user --jq .login)"
 echo "Repo: $repo   Required reviewer for production: $me   Mode: $($apply && echo APPLY || echo DRY-RUN)"
 echo
 
-echo "# 1. Ruleset on the default branch (PR required, code owner review, required checks, no force push)"
-run gh api -X POST "repos/$repo/rulesets" --input "$root/github/ruleset-main.json"
+echo "# 1. Ruleset on the default branch ($profile profile: PR required, required checks, no force push)"
+run gh api -X POST "repos/$repo/rulesets" --input "$ruleset"
 
 echo "# 2. production environment: required reviewer + only protected branches can deploy"
 env_body="$(jq -nc --argjson id "$me_id" '{

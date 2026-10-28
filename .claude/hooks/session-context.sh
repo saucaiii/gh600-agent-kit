@@ -12,7 +12,7 @@ branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo unknown)"
 echo "Current branch: $branch"
 
 if [[ -f .agent/state.md ]]; then
-  state_branch="$(grep -iE '^branch:' .agent/state.md | head -1 | sed -E 's/^[Bb]ranch:\s*//')"
+  state_branch="$(grep -iE '^branch:' .agent/state.md | head -1 | sed -E 's/^[Bb]ranch:[[:space:]]*//')"
   if [[ -n "$state_branch" && "$state_branch" != "none" && "$state_branch" != "$branch" ]]; then
     echo "WARNING (stale context): state.md is for branch '$state_branch' but you are on '$branch'. Do not trust it. Confirm with the user or rebuild state from git log."
   fi
@@ -35,22 +35,20 @@ if [[ -f .agent/decisions.md ]]; then
   grep -E '^- ' .agent/decisions.md | tail -15
 fi
 
-if [[ -f .agent/plan.md ]]; then
-  if grep -qiE '^\s*\**approved\**\s*:\s*\**\s*yes' .agent/plan.md; then
-    echo "Plan status: APPROVED"
-  else
-    echo "Plan status: NOT APPROVED (high-risk edits are blocked until a human approves)"
-  fi
-fi
+case "$(AGENT_REPO_ROOT="$root" .agent-policy/policy.sh plan-status 2>/dev/null)" in
+  approved) echo "Plan status: APPROVED by a human (approval is tied to the plan's current content)" ;;
+  changed-since-approval) echo "Plan status: CHANGED SINCE APPROVAL. High-risk edits are blocked until the human re-approves (scripts/agent/approve-plan.sh)." ;;
+  not-approved) echo "Plan status: NOT APPROVED. High-risk edits are blocked until the human runs scripts/agent/approve-plan.sh." ;;
+esac
 
-if [[ -f .agent/scope.txt ]]; then
-  echo "--- allowed edit scope ---"; grep -vE '^\s*(#|$)' .agent/scope.txt
+if [[ -f .agent-control/scope.txt ]]; then
+  echo "--- allowed edit scope (human-owned, .agent-control/scope.txt) ---"; grep -vE '^\s*(#|$)' .agent-control/scope.txt
 fi
 
 # Other agents working in parallel (worktrees) and their scopes, so this agent avoids their files.
 git worktree list --porcelain 2>/dev/null | awk '/^worktree /{print $2}' | while read -r wt; do
   [[ "$wt" == "$root" ]] && continue
-  [[ -f "$wt/.agent/scope.txt" ]] || continue
-  echo "Parallel agent in $wt owns: $(grep -vE '^\s*(#|$)' "$wt/.agent/scope.txt" | tr '\n' ' ')"
+  [[ -f "$wt/.agent-control/scope.txt" ]] || continue
+  echo "Parallel agent in $wt owns: $(grep -vE '^\s*(#|$)' "$wt/.agent-control/scope.txt" | tr '\n' ' ')"
 done
 exit 0

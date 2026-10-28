@@ -1,5 +1,7 @@
 # Agent runtime files (local evidence, not source)
-.agent/audit.log
-.agent/failures.json
 .agent/eval.md
-.agent/archive/
+.agent-control/audit.log
+.agent-control/failures.json
+.agent-control/approval
+.agent-control/scope.txt
+.agent-control/archive/

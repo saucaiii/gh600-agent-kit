@@ -23,7 +23,12 @@
 - Eval report: <!-- output of scripts/agent/eval-report.sh -->
 - Decisions: see `.agent/decisions.md`
 
+## Responsible AI
+- [ ] No personal data, customer data, or credentials in prompts, plans, memory, or logs
+- [ ] No automated decisions about people (or flagged as critical and prepared only)
+- [ ] New third-party code or dependencies listed with their licence:
+
 ## Review checklist
-- [ ] Plan reviewed and approved (high risk: approved before code was written)
+- [ ] Plan reviewed and approved (high risk: `approve-plan.sh` run before code was written)
 - [ ] Required reviews satisfied (code owners for guardrail paths)
 - [ ] Required checks satisfied

@@ -13,6 +13,9 @@
 /.claude/             @your-handle
 /.mcp.json            @your-handle
 /copilot/             @your-handle
+/scripts/             @your-handle
+/github/              @your-handle
+/.agent-control/      @your-handle
 
 # High-risk application areas
 /infra/               @your-handle

@@ -12,7 +12,7 @@ metadata:
 
 You implement exactly what the approved plan says.
 
-1. Read the plan (PR description or `.agent/plan.md`), `.agent/state.md`, and `.agent/scope.txt`. No plan: stop.
+1. Read the plan (PR description or `.agent/plan.md`), `.agent/state.md`, and `.agent-control/scope.txt`. No plan: stop.
 2. Change only files inside the plan's scope. Need anything outside scope: stop and ask. Never widen scope yourself.
 3. Commit in small steps that reference the plan step.
 4. Run the checks listed in the success criteria.

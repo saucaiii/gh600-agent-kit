@@ -4,14 +4,20 @@
   "enforcement": "active",
   "conditions": {
     "ref_name": {
-      "include": ["~DEFAULT_BRANCH"],
+      "include": [
+        "~DEFAULT_BRANCH"
+      ],
       "exclude": []
     }
   },
   "bypass_actors": [],
   "rules": [
-    { "type": "deletion" },
-    { "type": "non_fast_forward" },
+    {
+      "type": "deletion"
+    },
+    {
+      "type": "non_fast_forward"
+    },
     {
       "type": "pull_request",
       "parameters": {
@@ -27,10 +33,21 @@
       "parameters": {
         "strict_required_status_checks_policy": true,
         "required_status_checks": [
-          { "context": "test" },
-          { "context": "codeql" },
-          { "context": "require-plan" },
-          { "context": "scope-check" }
+          {
+            "context": "test"
+          },
+          {
+            "context": "codeql"
+          },
+          {
+            "context": "require-plan"
+          },
+          {
+            "context": "scope-check"
+          },
+          {
+            "context": "high-risk-plan-declared"
+          }
         ]
       }
     }

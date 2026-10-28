@@ -32,9 +32,9 @@ fi
 
 # Behavioral signals from the audit log (this branch only)
 blocked=0; failures=0
-if [[ -f .agent/audit.log ]]; then
-  blocked="$(jq -s '[.[] | select(.event=="blocked")] | length' .agent/audit.log 2>/dev/null || echo 0)"
-  failures="$(jq -s '[.[] | select(.event=="tool_failure")] | length' .agent/audit.log 2>/dev/null || echo 0)"
+if [[ -f .agent-control/audit.log ]]; then
+  blocked="$(jq -s --arg b "$branch" '[.[] | select(.event=="blocked" and .branch==$b)] | length' .agent-control/audit.log 2>/dev/null || echo 0)"
+  failures="$(jq -s --arg b "$branch" '[.[] | select(.event=="tool_failure" and .branch==$b)] | length' .agent-control/audit.log 2>/dev/null || echo 0)"
 fi
 
 verdict="pass"; (( scope_rc != 0 || test_rc != 0 )) && verdict="fail"

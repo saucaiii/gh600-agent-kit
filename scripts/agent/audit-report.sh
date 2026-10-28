@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Post-hoc analysis of agent behavior from .agent/audit.log.
+# Post-hoc analysis of agent behavior from .agent-control/audit.log.
 # Shows activity per agent, what was blocked and why, repeated failures,
 # and sessions with errors. Works across Claude Code and Copilot entries.
 # GH-600 Domain 5: post-hoc analysis; Domain 6: accountability.
 #
 # Usage: scripts/agent/audit-report.sh [audit.log]
 set -uo pipefail
-log="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.agent/audit.log}"
+log="${1:-$(git rev-parse --show-toplevel 2>/dev/null || pwd)/.agent-control/audit.log}"
 [[ -s "$log" ]] || { echo "No audit entries in $log"; exit 0; }
 
 echo "# Agent audit report"

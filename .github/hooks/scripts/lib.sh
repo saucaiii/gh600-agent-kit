@@ -14,9 +14,9 @@ tool_args() {
 repo_root() { git rev-parse --show-toplevel 2>/dev/null || pwd; }
 
 audit() {  # audit <event> <json-extra>
-  local root; root="$(repo_root)"; mkdir -p "$root/.agent"
+  local root; root="$(repo_root)"; mkdir -p "$root/.agent-control"
   local sha; sha="$(git -C "$root" rev-parse --short HEAD 2>/dev/null || echo none)"
   local x="${2:-}"; [[ -z "$x" ]] && x='{}'
   jq -nc --arg e "$1" --arg sha "$sha" --argjson x "$x" \
-    '{ts:(now|todate), agent:"copilot", event:$e, commit:$sha} + $x' >> "$root/.agent/audit.log" 2>/dev/null || true
+    '{ts:(now|todate), agent:"copilot", event:$e, commit:$sha} + $x' >> "$root/.agent-control/audit.log" 2>/dev/null || true
 }

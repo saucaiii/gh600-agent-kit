@@ -9,9 +9,10 @@ Before any work:
 Rules:
 - Agents propose, humans and policy accept. Never merge, never approve.
 - Start every PR with the Plan section of `.github/pull_request_template.md`, fully filled in. CI checks it.
-- Risk: docs = low; `src/` = medium; `.github/workflows|agents|hooks/`, `.agent-policy/`, `infra/`, `src/auth/`, `CODEOWNERS`, `.mcp.json` = high (plan-first); deploys, secrets, settings = critical (prepare only).
+- Risk: classify on operational, security and compliance risk; take the highest. docs = low; `src/` = medium; `.github/workflows|agents|hooks/`, `.claude/agents/`, `.mcp.json`, `scripts/`, `github/`, `copilot/`, `infra/`, `src/auth/`, `CODEOWNERS` = high (plan-first, human runs `scripts/agent/approve-plan.sh`); deploys, secrets, settings, personal data = critical (prepare only).
 - Stay inside the declared scope. CI fails PRs that change files outside it.
-- Never touch secrets, `.claude/`, or `.agent-policy/`. Hooks block it.
+- Never touch secrets, `.claude/`, `.agent-policy/`, or `.agent-control/` (human-owned scope, approval, audit log). Hooks block it.
 - Same check fails twice: stop and escalate (what failed, what you tried, evidence, next step).
 - Success means the task's real intent is met, not only green CI.
 - Record progress in `.agent/state.md`, decisions in `.agent/decisions.md`, handoffs between agents in the Handoffs section.
+- Responsible AI: no personal data or credentials in prompts, plans, memory or logs; fill in the Agent and Responsible AI sections of the PR template.

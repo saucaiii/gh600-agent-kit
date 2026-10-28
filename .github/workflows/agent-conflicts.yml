@@ -14,10 +14,15 @@ permissions:
 jobs:
   overlap:
     # Only agent branches. Human PRs are not checked.
-    if: startsWith(github.head_ref, 'agent/') || startsWith(github.head_ref, 'copilot/')
+    # agent/ = this kit, copilot/ = Copilot cloud agent, claude/ = Claude Code desktop app sessions.
+    if: startsWith(github.head_ref, 'agent/') || startsWith(github.head_ref, 'copilot/') || startsWith(github.head_ref, 'claude/')
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # Checker comes from the base branch so a PR cannot change it.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          sparse-checkout: scripts/agent
       - name: Compare with other open agent PRs
         env:
           GH_TOKEN: ${{ github.token }}
@@ -25,7 +30,7 @@ jobs:
         run: |
           gh pr view "$PR" --json files --jq '.files[].path' > mine.txt
           gh pr list --state open --limit 100 --json number,headRefName \
-            --jq "[.[] | select(.number != $PR) | select(.headRefName | startswith(\"agent/\") or startswith(\"copilot/\"))]" > open.json
+            --jq "[.[] | select(.number != $PR) | select(.headRefName | startswith(\"agent/\") or startswith(\"copilot/\") or startswith(\"claude/\"))]" > open.json
           jq -c '.[]' open.json | while read -r pr; do
             n="$(jq -r .number <<<"$pr")"
             files="$(gh pr view "$n" --json files --jq '[.files[].path]')"
