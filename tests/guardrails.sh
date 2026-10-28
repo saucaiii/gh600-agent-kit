@@ -123,6 +123,12 @@ echo "## Scope check (bash 3.2 compatible)"
 check "scope check passes"             0 "$(printf 'src/a.js\n' | PR_BODY='- **Scope (paths/files):** src/, tests/' scripts/agent/scope-check.sh >/dev/null; echo $?)"
 check "scope check fails outside"      1 "$(printf 'lib/b.js\n' | PR_BODY='- **Scope (paths/files):** src/' scripts/agent/scope-check.sh >/dev/null; echo $?)"
 
+echo "## Secrets are gitignored"
+for f in .env .env.local server.pem id.key secrets/x; do
+  check "gitignored: $f" 0 "$(git check-ignore -q "$f"; echo $?)"
+done
+check ".env.example not ignored" 1 "$(git check-ignore -q .env.example; echo $?)"
+
 echo "## Config files parse"
 for f in .claude/settings.json .mcp.json .github/hooks/guardrails.json github/*.json copilot/*.json; do
   check "valid JSON: $f" 0 "$(jq empty "$f" >/dev/null 2>&1; echo $?)"
