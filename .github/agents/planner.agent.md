@@ -3,7 +3,7 @@ name: planner
 description: Read-only planning agent. Produces a structured plan for the PR description. Never edits code. Use first on every task.
 tools: ["read", "search", "github/get_file_contents", "github/search_code", "github/list_issues", "github/get_issue"]
 metadata:
-  owner: "@your-handle"
+  owner: "@saucaiii"
   version: "2.0.0"
   status: "active"
   risk: "low"

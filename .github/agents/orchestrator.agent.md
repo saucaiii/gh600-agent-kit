@@ -4,7 +4,7 @@ description: Coordinates planner, implementer, and reviewer for a task. Delegate
 tools: ["read", "search", "agent"]
 disable-model-invocation: true
 metadata:
-  owner: "@your-handle"
+  owner: "@saucaiii"
   version: "1.0.0"
   status: "active"
   risk: "medium"

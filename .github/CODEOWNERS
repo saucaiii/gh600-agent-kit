@@ -1,22 +1,22 @@
 # Last matching line wins, so the catch-all goes FIRST.
-# Replace @your-handle with real users or teams.
+# Replace @saucaiii with real users or teams.
 # Blocks merges only when the ruleset has "Require review from Code Owners" (github/ruleset-main.json does).
 
-*                     @your-handle
+*                     @saucaiii
 
 # Guardrails and agent configuration: changing these changes what agents can do.
-/.github/workflows/   @your-handle
-/.github/agents/      @your-handle
-/.github/hooks/       @your-handle
-/.github/CODEOWNERS   @your-handle
-/.agent-policy/       @your-handle
-/.claude/             @your-handle
-/.mcp.json            @your-handle
-/copilot/             @your-handle
-/scripts/             @your-handle
-/github/              @your-handle
-/.agent-control/      @your-handle
+/.github/workflows/   @saucaiii
+/.github/agents/      @saucaiii
+/.github/hooks/       @saucaiii
+/.github/CODEOWNERS   @saucaiii
+/.agent-policy/       @saucaiii
+/.claude/             @saucaiii
+/.mcp.json            @saucaiii
+/copilot/             @saucaiii
+/scripts/             @saucaiii
+/github/              @saucaiii
+/.agent-control/      @saucaiii
 
 # High-risk application areas
-/infra/               @your-handle
-/src/auth/            @your-handle
+/infra/               @saucaiii
+/src/auth/            @saucaiii

@@ -4,7 +4,7 @@ description: Implements an approved plan on its own branch and opens a pull requ
 tools: ["read", "search", "edit", "execute"]
 disable-model-invocation: true
 metadata:
-  owner: "@your-handle"
+  owner: "@saucaiii"
   version: "2.0.0"
   status: "active"
   risk: "medium"

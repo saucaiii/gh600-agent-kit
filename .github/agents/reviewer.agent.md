@@ -3,7 +3,7 @@ name: reviewer
 description: Evaluates a pull request against its plan's success criteria using tests, scan results, and the diff. Read-only. Use after implementation.
 tools: ["read", "search", "github/get_pull_request", "github/get_pull_request_files", "github/list_code_scanning_alerts"]
 metadata:
-  owner: "@your-handle"
+  owner: "@saucaiii"
   version: "2.0.0"
   status: "active"
   risk: "low"
