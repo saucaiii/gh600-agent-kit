@@ -53,6 +53,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: read            # CodeQL reads the workflow run; required on private repos
       security-events: write   # only what CodeQL needs to upload SARIF results
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
