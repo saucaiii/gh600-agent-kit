@@ -79,6 +79,7 @@ scripts/agent/close-task.sh --remove-worktree               # archive + reset me
 
 ## Limits
 
+- On a free personal account, rulesets, environment reviewers, and code scanning uploads only work on **public** repos (the API returns 403 "Upgrade to GitHub Pro or make this repository public"). Private repos need GitHub Pro or higher for the platform layer.
 - Hooks run where the agent runs. A person or tool without them is stopped only by the GitHub layer. Turn that on first.
 - `policy.sh` pattern-matches commands. It catches mistakes, not a determined attacker. The ruleset is the real wall.
 - Plan approval is enforced locally (hash in `.agent-control/approval`, written only by `approve-plan.sh` from an interactive terminal). On GitHub, the human gate is PR review (team) or you pressing Merge (solo).
