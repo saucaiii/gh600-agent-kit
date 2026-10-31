@@ -32,7 +32,8 @@ fi
 root="$(git rev-parse --show-toplevel)"
 cd "$root"
 
-default="$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null | sed 's|^origin/||')"
+default="$(git symbolic-ref -q --short refs/remotes/origin/HEAD 2>/dev/null || true)"
+default="${default#origin/}"
 if [ -z "$default" ]; then default="main"; fi
 
 current="$(git rev-parse --abbrev-ref HEAD)"

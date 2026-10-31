@@ -30,7 +30,7 @@ GH-600 certifies people, not code, so no repo can be "certified compliant". This
 | Post-hoc analysis | `scripts/agent/audit-report.sh` |
 | Lifecycle | `agent-lifecycle.md` |
 | Responsible AI | `CLAUDE.md` section, PR template checklist |
-| Self-test | `tests/guardrails.sh` (93 checks, runs on macOS bash 3.2) |
+| Self-test | `tests/guardrails.sh` (105 checks, runs on macOS bash 3.2) |
 
 ## Install
 
@@ -67,7 +67,7 @@ scripts/agent/close-task.sh --remove-worktree               # archive + reset me
 
 ## Tested
 
-`tests/guardrails.sh` runs 93 checks against a throwaway repo: every policy rule through both adapters (Claude and Copilot input formats), guardrail tamper attempts by file and by shell, plan approval binding, scope, fail-closed behaviour, retries and escalation, audit logging, session context, scope check on bash 3.2, and JSON/shell syntax. All pass on macOS (bash 3.2). Workflow YAML parses; `actionlint` was not run.
+`tests/guardrails.sh` runs 105 checks against a throwaway repo: every policy rule through both adapters (Claude and Copilot input formats), guardrail tamper attempts by file and by shell, plan approval binding, scope, fail-closed behaviour, retries and escalation, audit logging, session context, scope check on bash 3.2, and JSON/shell syntax. All pass on macOS (bash 3.2). Workflow YAML parses; `actionlint` was not run.
 
 **Not tested live:** a real Claude Code session, a real Copilot cloud agent run, and real GitHub API calls. Run them in your gh600-lab repo first.
 
