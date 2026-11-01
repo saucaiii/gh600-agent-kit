@@ -17,7 +17,10 @@ rm -f .agent/plan.md .agent/state.md .agent/eval.md
 rm -f .agent-control/scope.txt .agent-control/approval
 rm -rf .agent-control/archive
 chmod +x .agent-policy/*.sh .claude/hooks/*.sh .github/hooks/scripts/*.sh scripts/*.sh scripts/agent/*.sh scripts/setup/*.sh 2>/dev/null || true
-git init -q -b main && git -c user.name=t -c user.email=t@t add -A && git -c user.name=t -c user.email=t@t commit -qm init
+git init -q -b main
+git config user.name t
+git config user.email t@t
+git add -A && git commit -qm init
 export CLAUDE_PROJECT_DIR="$repo"
 
 pass=0; fail=0
