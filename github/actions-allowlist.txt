@@ -1,0 +1,9 @@
+# Third-party actions this repo may use, besides GitHub-owned ones (actions/*, github/*).
+# One pattern per line, GitHub's allowlist syntax: owner/*, owner/repo@*, owner/repo/path@*.
+# Used by scripts/admin/actions-pin-check.sh (local check) and
+# scripts/admin/actions-policy.sh (sets the repo's "allowed actions" list).
+# GitHub only applies patterns on public repos; private repos rely on the pin check.
+# Adding a line is a high-risk change: it widens what workflows can run.
+#
+# Example:
+# docker/login-action@*

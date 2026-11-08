@@ -30,7 +30,8 @@ GH-600 certifies people, not code, so no repo can be "certified compliant". This
 | Post-hoc analysis | `scripts/agent/audit-report.sh` |
 | Lifecycle | `agent-lifecycle.md` |
 | Responsible AI | `CLAUDE.md` section, PR template checklist |
-| Self-test | `tests/guardrails.sh` (105 checks, runs on macOS bash 3.2) |
+| GH-100 admin | `scripts/admin/` audits and dry-run appliers, `github/actions-allowlist.txt`, `.claude/skills/github-admin/`, [`gh100-map.md`](gh100-map.md), [`admin-runbook.md`](admin-runbook.md). See below |
+| Self-test | `tests/guardrails.sh` (153 checks, 160 once the GH-100 policy line is in; runs on macOS bash 3.2) |
 
 ## Install
 
@@ -65,11 +66,34 @@ scripts/agent/audit-report.sh                               # what agents did, b
 scripts/agent/close-task.sh --remove-worktree               # archive + reset memory
 ```
 
+## GH-100 admin layer
+
+Covers the [GH-100 GitHub Enterprise Administrator](https://learn.microsoft.com/en-us/credentials/certifications/resources/study-guides/gh-100) skills. Every skill is mapped in [`gh100-map.md`](gh100-map.md); enterprise-only skills are explained in [`admin-runbook.md`](admin-runbook.md).
+
+```bash
+scripts/admin/access-audit.sh owner/repo --out access.md      # who has access, keys, hooks, rulesets
+scripts/admin/secrets-audit.sh owner/repo                     # secret names and age, never values
+scripts/admin/usage-report.sh owner/repo --days 30 --billing  # Actions failures, run time, cache, artifacts
+scripts/admin/actions-pin-check.sh                            # every uses: pinned to a SHA and allowed
+scripts/admin/security-baseline.sh owner/repo                 # dry run; add --apply (human only)
+scripts/admin/actions-policy.sh owner/repo                    # dry run; add --apply (human only)
+```
+
+Run the appliers from a checkout of the target repo: `actions-policy.sh` only requires SHA pinning when the pin check passes there. Each apply step that needs a paid plan or a public repo reports the error and continues.
+
+**One-time human edit.** Agents cannot write `.agent-policy/`. Set this line in `.agent-policy/policy.sh` so the policy blocks agents from `--apply` (and from `release.sh` and `sync-kit.sh`, which `CLAUDE.md` already lists as human-only):
+
+```bash
+HUMAN_ONLY_SCRIPTS_RE='scripts/(agent/(approve-plan|close-task)|setup/(apply-github-settings|sync-kit)|release)\.sh|scripts/admin/(security-baseline|actions-policy)\.sh.*--apply'
+```
+
+`tests/guardrails.sh` skips those policy checks until the line is in, then runs them.
+
 ## Tested
 
-`tests/guardrails.sh` runs 105 checks against a throwaway repo: every policy rule through both adapters (Claude and Copilot input formats), guardrail tamper attempts by file and by shell, plan approval binding, scope, fail-closed behaviour, retries and escalation, audit logging, session context, scope check on bash 3.2, and JSON/shell syntax. All pass on macOS (bash 3.2). Workflow YAML parses; `actionlint` was not run.
+`tests/guardrails.sh` runs 153 checks (160 with the GH-100 policy line) against a throwaway repo: every policy rule through both adapters (Claude and Copilot input formats), guardrail tamper attempts by file and by shell, plan approval binding, scope, fail-closed behaviour, retries and escalation, audit logging, session context, scope check on bash 3.2, JSON/shell syntax, and the GH-100 admin scripts against a stub `gh` (argument handling, read-only audits make no writes, dry runs make no writes, `--apply` hits the right endpoints, SHA pin check). All pass on macOS (bash 3.2). Workflow YAML parses; `actionlint` was not run.
 
-**Not tested live:** a real Claude Code session, a real Copilot cloud agent run, and real GitHub API calls. Run them in your gh600-lab repo first.
+**Not tested live:** a real Claude Code session, a real Copilot cloud agent run, and real GitHub API calls (the admin scripts were tested against a stub; run their dry runs on gh600-lab first). Run them in your gh600-lab repo first.
 
 ## Things to verify against GitHub docs before relying on them
 

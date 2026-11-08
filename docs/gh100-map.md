@@ -4,7 +4,7 @@ Every skill from the [official GH-100 study guide](https://learn.microsoft.com/e
 
 Legend: **E** = enforced · **G** = guidance · **T** = tooling (script you run) · **S** = study only. S rows are enterprise or organization features a personal account cannot turn on. Read [`admin-runbook.md`](admin-runbook.md) for them and practise in a free trial org if you can.
 
-Scripts under `scripts/admin/` arrive with the GH-100 layer PR after plan approval (see `.agent/plan.md`). Until then those rows are planned.
+Scripts live in `scripts/admin/`. Read-only audits are safe for anyone; `security-baseline.sh` and `actions-policy.sh` are dry run by default and human-only with `--apply`.
 
 Exam facts: 700/1000 to pass. Weights below are the official ones.
 

@@ -16,7 +16,7 @@ cd "$repo"
 rm -f .agent/plan.md .agent/state.md .agent/eval.md
 rm -f .agent-control/scope.txt .agent-control/approval
 rm -rf .agent-control/archive
-chmod +x .agent-policy/*.sh .claude/hooks/*.sh .github/hooks/scripts/*.sh scripts/*.sh scripts/agent/*.sh scripts/setup/*.sh 2>/dev/null || true
+chmod +x .agent-policy/*.sh .claude/hooks/*.sh .github/hooks/scripts/*.sh scripts/*.sh scripts/agent/*.sh scripts/setup/*.sh scripts/admin/*.sh 2>/dev/null || true
 git init -q -b main
 git config user.name t
 git config user.email t@t
@@ -142,7 +142,7 @@ echo "## Config files parse"
 for f in .claude/settings.json .mcp.json .github/hooks/guardrails.json github/*.json copilot/*.json; do
   check "valid JSON: $f" 0 "$(jq empty "$f" >/dev/null 2>&1; echo $?)"
 done
-for f in .agent-policy/*.sh .claude/hooks/*.sh .github/hooks/scripts/*.sh scripts/*.sh scripts/agent/*.sh scripts/setup/*.sh; do
+for f in .agent-policy/*.sh .claude/hooks/*.sh .github/hooks/scripts/*.sh scripts/*.sh scripts/agent/*.sh scripts/setup/*.sh scripts/admin/*.sh; do
   check "bash syntax: $f" 0 "$(bash -n "$f" 2>/dev/null; echo $?)"
 done
 
@@ -191,6 +191,84 @@ readme_after="$(sha_of "$proj/README.md")"
 codeowners_after="$(sha_of "$proj/.github/CODEOWNERS")"
 check "sync-kit: README untouched"     0 "$([[ \"$readme_before\" == \"$readme_after\" ]]; echo $?)"
 check "sync-kit: CODEOWNERS untouched" 0 "$([[ \"$codeowners_before\" == \"$codeowners_after\" ]]; echo $?)"
+
+echo "## GH-100 admin scripts"
+# Stub gh on PATH: answers like the API with fixed JSON and logs every call. No network.
+stub="$tmp/stub-bin"; mkdir -p "$stub"; ghlog="$tmp/gh.log"
+cat > "$stub/gh" <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >> "$GH_STUB_LOG"
+[ "$1" = auth ] && exit 0
+case "$*" in
+  *"--jq .full_name"*) echo stub/repo ;;
+  *environments*secrets*) echo '{"secrets":[{"name":"OLD","updated_at":"2020-01-01T00:00:00Z"}]}' ;;
+  *environments*) echo '{"environments":[{"name":"production","protection_rules":[]}]}' ;;
+  *secrets*) echo '{"secrets":[]}' ;;
+  *actions/runs*) echo '{"workflow_runs":[]}' ;;
+  *artifacts*) echo '{"artifacts":[]}' ;;
+  *collaborators*|*invitations*|*keys*|*hooks*|*rulesets*) echo '[]' ;;
+  *) echo '{}' ;;
+esac
+STUB
+chmod +x "$stub/gh" scripts/admin/*.sh
+adm() { # adm <script> <args...> -> exit code, gh calls logged to $ghlog
+  s="$1"; shift
+  (PATH="$stub:$PATH" GH_STUB_LOG="$ghlog" "scripts/admin/$s.sh" "$@" >/dev/null 2>&1); echo $?
+}
+for s in access-audit security-baseline actions-policy secrets-audit usage-report; do
+  check "$s: no args"                  2 "$(adm "$s")"
+  check "$s: bad repo"                 2 "$(adm "$s" not-a-repo)"
+  check "$s: unknown option"           2 "$(adm "$s" o/r --nope)"
+done
+check "actions-policy: bad retention"  2 "$(adm actions-policy o/r --retention-days 0)"
+check "actions-policy: bad share"      2 "$(adm actions-policy o/r --share-workflows everyone)"
+check "secrets-audit: bad max age"     2 "$(adm secrets-audit o/r --max-age-days x)"
+for s in access-audit secrets-audit usage-report; do
+  : > "$ghlog"
+  check "$s: runs"                     0 "$(adm "$s" o/r)"
+  check "$s: read-only (no writes)"    1 "$(grep -qE ' -X (PUT|PATCH|POST|DELETE)' "$ghlog"; echo $?)"
+done
+sa_out="$(PATH="$stub:$PATH" GH_STUB_LOG="$ghlog" scripts/admin/secrets-audit.sh o/r 2>/dev/null)"
+check "secrets-audit: flags old secret" 0 "$(grep -q 'OLD | [0-9]* | ROTATE' <<<"$sa_out"; echo $?)"
+for s in security-baseline actions-policy; do
+  : > "$ghlog"
+  check "$s: dry run"                  0 "$(adm "$s" o/r)"
+  check "$s: dry run writes nothing"   1 "$(grep -qE ' -X (PUT|PATCH|POST|DELETE)' "$ghlog"; echo $?)"
+  : > "$ghlog"
+  check "$s: --apply"                  0 "$(adm "$s" o/r --apply)"
+  check "$s: --apply writes"           0 "$(grep -qE ' -X (PUT|PATCH)' "$ghlog"; echo $?)"
+done
+: > "$ghlog"; adm actions-policy o/r --apply >/dev/null
+check "actions-policy: pins required"  0 "$(grep -q 'sha_pinning_required=true' "$ghlog"; echo $?)"
+check "security-baseline: no CodeQL default unless asked" 1 "$(adm security-baseline o/r --apply >/dev/null; grep -q 'default-setup -f state' "$ghlog"; echo $?)"
+
+# Offline pin check
+check "pin check: kit workflows clean" 0 "$(scripts/admin/actions-pin-check.sh >/dev/null 2>&1; echo $?)"
+wf="$tmp/wf"; mkdir -p "$wf"
+printf 'jobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n' > "$wf/tag.yml"
+check "pin check: tag pin fails"       1 "$(scripts/admin/actions-pin-check.sh --dir "$wf" >/dev/null 2>&1; echo $?)"
+printf 'jobs:\n  a:\n    steps:\n      - uses: evil/action@%s\n' 0123456789abcdef0123456789abcdef01234567 > "$wf/tag.yml"
+check "pin check: unlisted owner fails" 1 "$(scripts/admin/actions-pin-check.sh --dir "$wf" >/dev/null 2>&1; echo $?)"
+echo 'evil/*' > "$tmp/allow.txt"
+check "pin check: allowlisted passes"  0 "$(scripts/admin/actions-pin-check.sh --dir "$wf" --allowlist "$tmp/allow.txt" >/dev/null 2>&1; echo $?)"
+printf 'jobs:\n  a:\n    steps:\n      - uses: ./local-action\n      - uses: docker://alpine:3\n' > "$wf/tag.yml"
+check "pin check: docker tag fails"    1 "$(scripts/admin/actions-pin-check.sh --dir "$wf" >/dev/null 2>&1; echo $?)"
+check "pin check: bad arg"             2 "$(scripts/admin/actions-pin-check.sh --nope >/dev/null 2>&1; echo $?)"
+
+# Policy: agents cannot run the appliers. Needs the human edit to HUMAN_ONLY_SCRIPTS_RE
+# (see docs/kit.md, GH-100 layer). Skipped, not failed, until that edit lands.
+if grep -q 'admin/' .agent-policy/policy.sh; then
+  git switch -q -c agent/gh100-policy-check 2>/dev/null || git switch -q agent/gh100-policy-check
+  check "agent runs security-baseline"   2 "$(claude_bash 'scripts/admin/security-baseline.sh o/r --apply')"
+  check "agent runs actions-policy"      2 "$(copilot_bash 'scripts/admin/actions-policy.sh o/r --apply')"
+  check "agent runs release.sh"          2 "$(claude_bash 'scripts/release.sh v1.0.0')"
+  check "agent runs sync-kit.sh"         2 "$(claude_bash 'scripts/setup/sync-kit.sh ../kit')"
+  check "agent dry-runs actions-policy"  0 "$(claude_bash 'scripts/admin/actions-policy.sh o/r')"
+  check "agent runs read-only audit"     0 "$(claude_bash 'scripts/admin/access-audit.sh o/r')"
+  check "agent runs pin check"           0 "$(claude_bash 'scripts/admin/actions-pin-check.sh')"
+else
+  echo "SKIP: policy.sh not yet updated for scripts/admin (human edit, see docs/kit.md)"
+fi
 
 echo
 echo "Passed: $pass  Failed: $fail  (bash $BASH_VERSION, $(uname -s))"
