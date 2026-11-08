@@ -58,7 +58,7 @@ Gates exist only where they reduce real risk: low and medium work is not held fo
 - Never read, print, or write secrets (`.env*`, `*.pem`, `*.key`, `secrets/`). Refer to them by variable name only.
 - Never edit `.claude/settings*.json`, `.claude/hooks/`, `.agent-policy/`, or `.agent-control/`, by any tool including the shell.
 - Never use `--force`, `--no-verify`, `reset --hard`, `rebase`, `gh pr merge`, `gh secret set`, or start a deploy.
-- Never run the human-only scripts: `approve-plan.sh`, `close-task.sh`, `apply-github-settings.sh`, `release.sh`, `sync-kit.sh`.
+- Never run the human-only scripts: `approve-plan.sh`, `close-task.sh`, `apply-github-settings.sh`, `release.sh`, `sync-kit.sh`, and `scripts/admin/security-baseline.sh` or `scripts/admin/actions-policy.sh` with `--apply`. Their dry runs and the read-only admin audits are fine; see the `github-admin` skill.
 - Never pipe a download into a shell.
 - Cloud agent environments are prepared by `.github/workflows/copilot-setup-steps.yml` and have their own secrets (the `copilot` environment). Do not assume CI secrets exist there.
 

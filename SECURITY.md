@@ -11,6 +11,8 @@ Include, if you can:
 - The commit SHA or release tag affected.
 - Your assessment of impact (what an attacker can do).
 
+The full response plan (triage, contain, fix privately, release, review) is in [`docs/admin-runbook.md`](docs/admin-runbook.md#security-response-plan).
+
 Target response time: within 3 business days to acknowledge, with a plan or fix target in the follow-up. Adjust the SLA to what you can actually commit to for this project.
 
 ## Critical risk areas

@@ -74,6 +74,7 @@ dirs="
 .github/workflows/
 scripts/agent/
 scripts/setup/
+scripts/admin/
 github/
 copilot/
 "
@@ -83,6 +84,8 @@ files="
 docs/kit.md
 docs/exam-map.md
 docs/agent-lifecycle.md
+docs/gh100-map.md
+docs/admin-runbook.md
 tests/guardrails.sh
 "
 
