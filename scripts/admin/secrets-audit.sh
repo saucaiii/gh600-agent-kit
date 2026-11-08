@@ -30,7 +30,7 @@ admin_check_repo "$repo"
 stale=0; count=0
 # rows <scope> <endpoint> <array-key>
 rows() {
-  json="$(gh api --paginate "$2" 2>/dev/null | jq -s --arg k "$3" 'map(.[$k] // []) | add // []' 2>/dev/null)"
+  json="$(admin_list "$2" "$3" || true)"
   if [ -z "$json" ]; then echo "| $1 | _not available_ | | |"; return; fi
   out="$(echo "$json" | jq -r --arg s "$1" --argjson max "$max" '
     .[] | ((now - ((.updated_at // .created_at // "1970-01-01T00:00:00Z") | sub("\\.[0-9]+Z$";"Z") | fromdateiso8601)) / 86400 | floor) as $age
@@ -50,7 +50,7 @@ echo "| --- | --- | --- | --- |"
 rows "repo" "repos/$repo/actions/secrets?per_page=100" secrets
 rows "dependabot" "repos/$repo/dependabot/secrets?per_page=100" secrets
 rows "org (shared)" "repos/$repo/actions/organization-secrets?per_page=100" secrets
-envs="$(gh api "repos/$repo/environments" 2>/dev/null | jq -r '.environments[]?.name' 2>/dev/null || true)"
+envs="$( (admin_list "repos/$repo/environments?per_page=100" environments || echo '[]') | jq -r '.[].name')"
 if [ -n "$envs" ]; then
   while IFS= read -r env; do
     [ -z "$env" ] && continue
@@ -61,8 +61,9 @@ $envs
 EOF
 fi
 echo
-vars="$(gh api --paginate "repos/$repo/actions/variables?per_page=100" 2>/dev/null | jq -r -s 'map(.variables // []) | add // [] | map(.name) | join(", ")' 2>/dev/null || true)"
-echo "Variables (not secret, names only): ${vars:-none}"
+if v="$(admin_list "repos/$repo/actions/variables?per_page=100" variables)"; then
+  vars="$(echo "$v" | jq -r 'map(.name) | join(", ")')"; echo "Variables (not secret, names only): ${vars:-none}"
+else echo "Variables: not available"; fi
 echo
 echo "Secrets: $count. Due for rotation: $stale."
 echo "Prefer OIDC to cloud providers and vaults over stored secrets; keep deploy credentials in environment secrets behind reviewers."

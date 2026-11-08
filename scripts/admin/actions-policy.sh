@@ -43,22 +43,29 @@ allowlist="$root/github/actions-allowlist.txt"
 echo "Repo: $repo   Mode: $($APPLY && echo APPLY || echo DRY-RUN)"
 echo
 echo "Current state:"
-echo "  permissions:        $(gh api "repos/$repo/actions/permissions" 2>/dev/null | jq -c . 2>/dev/null || echo unknown)"
-echo "  selected actions:   $(gh api "repos/$repo/actions/permissions/selected-actions" 2>/dev/null | jq -c . 2>/dev/null || echo 'n/a')"
-echo "  workflow token:     $(gh api "repos/$repo/actions/permissions/workflow" 2>/dev/null | jq -c . 2>/dev/null || echo unknown)"
-echo "  fork PR approval:   $(gh api "repos/$repo/actions/permissions/fork-pr-contributor-approval" 2>/dev/null | jq -c . 2>/dev/null || echo unknown)"
-echo "  retention:          $(gh api "repos/$repo/actions/permissions/artifact-and-log-retention" 2>/dev/null | jq -c . 2>/dev/null || echo unknown)"
+echo "  permissions:        $(admin_show "repos/$repo/actions/permissions" tojson)"
+echo "  selected actions:   $(admin_show "repos/$repo/actions/permissions/selected-actions" tojson)"
+echo "  workflow token:     $(admin_show "repos/$repo/actions/permissions/workflow" tojson)"
+echo "  fork PR approval:   $(admin_show "repos/$repo/actions/permissions/fork-pr-contributor-approval" tojson)"
+echo "  retention:          $(admin_show "repos/$repo/actions/permissions/artifact-and-log-retention" tojson)"
 echo
 
 pin=true
-if [ -d "$root/.github/workflows" ]; then
+origin="$(git -C "$root" remote get-url origin 2>/dev/null || true)"
+case "$origin" in
+  *"github.com/$repo"|*"github.com/$repo.git"|*"github.com:$repo"|*"github.com:$repo.git") ;;
+  *) pin=false; echo "  This checkout's origin ('${origin:-none}') is not $repo, so its workflows say nothing about $repo."
+     echo "  SHA pinning is left unchanged. Run from a checkout of $repo to turn it on." ;;
+esac
+if ! $pin; then :
+elif [ -d "$root/.github/workflows" ]; then
   if ! "$here/actions-pin-check.sh" --dir "$root/.github/workflows" --allowlist "$allowlist"; then
     pin=false
-    echo "  SHA pinning will NOT be required: fix the lines above first, then re-run."
+    echo "  SHA pinning is left unchanged: fix the lines above first, then re-run."
   fi
 else
   pin=false
-  echo "  No .github/workflows here, so SHA pinning is not turned on. Run from a checkout of $repo."
+  echo "  No .github/workflows here, so SHA pinning is left unchanged."
 fi
 echo
 
@@ -66,8 +73,13 @@ tmpd="$(mktemp -d)"; trap 'rm -rf "$tmpd"' EXIT
 patterns="$(sed -e 's/#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$allowlist" 2>/dev/null | grep -v '^$' || true)"
 printf '%s\n' "$patterns" | jq -R . | jq -s '{github_owned_allowed: true, verified_allowed: false, patterns_allowed: map(select(length>0))}' > "$tmpd/selected.json"
 
-echo "# 1. Allowed actions = selected; SHA pinning required: $pin"
-admin_run gh api -X PUT "repos/$repo/actions/permissions" -F enabled=true -f allowed_actions=selected -F "sha_pinning_required=$pin"
+admin_confirm_apply "$repo"
+echo "# 1. Allowed actions = selected; SHA pinning: $($pin && echo required || echo 'left as is')"
+if $pin; then
+  admin_run gh api -X PUT "repos/$repo/actions/permissions" -F enabled=true -f allowed_actions=selected -F sha_pinning_required=true
+else
+  admin_run gh api -X PUT "repos/$repo/actions/permissions" -F enabled=true -f allowed_actions=selected
+fi
 echo "# 2. Selected actions: $(jq -c . "$tmpd/selected.json")"
 admin_run gh api -X PUT "repos/$repo/actions/permissions/selected-actions" --input "$tmpd/selected.json"
 echo "# 3. Default GITHUB_TOKEN read-only; Actions cannot approve PRs"

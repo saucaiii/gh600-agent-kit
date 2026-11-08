@@ -26,7 +26,9 @@ Settings changes are **critical risk** in this repo (`CLAUDE.md`): you prepare, 
 3. Least privilege: lowest role, teams over individuals, fine-grained PATs with expiry, GitHub Apps over OAuth Apps, environment secrets or OIDC over repo secrets.
 4. A new third-party action means a pinned SHA plus a line in `github/actions-allowlist.txt`. Both are high risk: plan first.
 5. A 403 on a free personal account often means the feature needs a public repo or a paid plan. Report it; do not retry.
-6. Check numbers (rate limits, retention, prices) against GitHub Docs before stating them as facts.
+6. Check every `gh api` exit code before parsing. A 403 or 404 means "not available", never "none". Under `set -o pipefail` never write `gh ... | jq ... || echo fallback`.
+7. `--apply` refuses to run in an agent session or without a terminal. Do not work around it.
+8. Check numbers (rate limits, retention, prices) against GitHub Docs before stating them as facts.
 
 ## Reporting
 

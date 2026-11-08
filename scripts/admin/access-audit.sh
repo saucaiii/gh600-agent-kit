@@ -28,8 +28,8 @@ done
 admin_need_tools
 admin_check_repo "$repo"
 
-# list <endpoint> -> one JSON array (pages merged), or nothing on error
-list() { gh api --paginate "$1" 2>/dev/null | jq -s 'map(if type=="array" then . else [] end) | add // []' 2>/dev/null; }
+# list <endpoint> -> one JSON array (pages merged), or empty when the API refuses (shown as not available)
+list() { admin_list "$1" || true; }
 na() { echo "_Not available: needs repo admin, a paid plan, or org access._"; }
 
 findings=0
@@ -79,7 +79,7 @@ report() {
   if [ -n "$h" ]; then
     if [ "$(echo "$h" | jq length)" -eq 0 ]; then echo "None."; else
       echo "| Host | Active | Secret set | TLS verify |"; echo "| --- | --- | --- | --- |"
-      echo "$h" | jq -r '.[] | "| \((.config.url // "") | sub("^https?://";"") | split("/")[0]) | \(.active) | \(if .config.secret then "yes" else "NO" end) | \(if (.config.insecure_ssl|tostring)=="1" then "OFF" else "on" end) |"'
+      echo "$h" | jq -r '.[] | "| \((.config.url // "") | sub("^https?://";"") | sub("^[^@/]*@";"") | split("/")[0]) | \(.active) | \(if .config.secret then "yes" else "NO" end) | \(if (.config.insecure_ssl|tostring)=="1" then "OFF" else "on" end) |"'
       weak="$(echo "$h" | jq '[.[] | select((.config.secret|not) or ((.config.insecure_ssl|tostring)=="1"))] | length')"
       if [ "$weak" -gt 0 ]; then echo; echo "- **Finding:** $weak webhook(s) without a secret or with TLS verification off."; findings=$((findings+1)); fi
     fi
@@ -100,31 +100,31 @@ report() {
   echo
 
   echo "## Environments"
-  e="$(gh api "repos/$repo/environments" 2>/dev/null)"
+  e="$(admin_list "repos/$repo/environments?per_page=100" environments || true)"
   if [ -n "$e" ]; then
-    if [ "$(echo "$e" | jq '.environments // [] | length')" -eq 0 ]; then echo "None."; else
+    if [ "$(echo "$e" | jq 'length')" -eq 0 ]; then echo "None."; else
       echo "| Environment | Protection rules |"; echo "| --- | --- |"
-      echo "$e" | jq -r '.environments[] | "| \(.name) | \([.protection_rules[]?.type] | if length==0 then "NONE" else join(", ") end) |"'
+      echo "$e" | jq -r '.[] | "| \(.name) | \([.protection_rules[]?.type] | if length==0 then "NONE" else join(", ") end) |"'
     fi
   else na; fi
   echo
 
   if [ -n "$org" ]; then
     echo "## Organization: $org"
-    o="$(gh api "orgs/$org" 2>/dev/null)"
+    o="$(admin_get "orgs/$org" || true)"
     if [ -n "$o" ]; then
-      echo "- 2FA required: $(echo "$o" | jq -r '.two_factor_requirement_enabled // "unknown (needs owner)"')"
+      echo "- 2FA required: $(echo "$o" | jq -r 'if .two_factor_requirement_enabled == null then "unknown (needs owner)" else .two_factor_requirement_enabled end')"
       echo "- Base permission for members: $(echo "$o" | jq -r '.default_repository_permission // "unknown (needs owner)"')"
       if [ "$(echo "$o" | jq -r '.two_factor_requirement_enabled')" = "false" ]; then echo "- **Finding:** org does not require 2FA."; findings=$((findings+1)); fi
       case "$(echo "$o" | jq -r '.default_repository_permission // ""')" in write|admin) echo "- **Finding:** base permission is above read."; findings=$((findings+1)) ;; esac
     else na; fi
     m="$(list "orgs/$org/members?filter=2fa_disabled&per_page=100")"
-    if [ -n "$m" ]; then
+    if [ -z "$m" ]; then echo "- Members without 2FA: not available (needs org owner)"; else
       n="$(echo "$m" | jq length)"; echo "- Members without 2FA: $n"
       if [ "$n" -gt 0 ]; then echo "$m" | jq -r '.[] | "  - \(.login)"'; findings=$((findings+1)); fi
     fi
     oc="$(list "orgs/$org/outside_collaborators?per_page=100")"
-    if [ -n "$oc" ]; then echo "- Outside collaborators: $(echo "$oc" | jq length)"; echo "$oc" | jq -r '.[] | "  - \(.login)"'; fi
+    if [ -z "$oc" ]; then echo "- Outside collaborators: not available (needs org owner)"; else echo "- Outside collaborators: $(echo "$oc" | jq length)"; echo "$oc" | jq -r '.[] | "  - \(.login)"'; fi
     echo
   fi
 

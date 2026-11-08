@@ -46,16 +46,15 @@ bad=0; total=0
 for f in "$dir"/*.yml "$dir"/*.yaml; do
   [ -f "$f" ] || continue
   n=0
-  while IFS= read -r line; do
+  while IFS= read -r line || [ -n "$line" ]; do
     n=$((n+1))
-    case "$line" in *uses:*) ;; *) continue ;; esac
-    trimmed="$(printf '%s' "$line" | sed -e 's/^[[:space:]]*//' -e 's/^-[[:space:]]*//')"
-    case "$trimmed" in uses:*) ;; *) continue ;; esac
-    ref="$(printf '%s' "$trimmed" | sed -e 's/^uses:[[:space:]]*//' -e 's/[[:space:]]#.*$//' -e 's/[[:space:]]*$//' -e "s/^[\"']//" -e "s/[\"']$//")"
-    [ -z "$ref" ] && continue
+    # Any line with a `uses` key in any form: plain, "quoted", 'quoted', after "- ", or in a { flow } map.
+    printf '%s' "$line" | grep -Eq "^[[:space:]]*(-[[:space:]]*)?([{][^}]*)?([{,][[:space:]]*)?[\"']?uses[\"']?[[:space:]]*:" || continue
     total=$((total+1))
     where="${f#"$root"/}:$n"
+    ref="$(printf '%s' "$line" | sed -E -e "s/.*[\"']?uses[\"']?[[:space:]]*:[[:space:]]*//" -e 's/[[:space:]]+#.*$//' -e 's/[,}].*$//' -e 's/[[:space:]]*$//' -e "s/^[\"']//" -e "s/[\"']$//")"
     case "$ref" in
+      ""|"|"*|">"*) echo "UNPARSED  $where  (put the action on the same line as uses:)"; bad=$((bad+1)); continue ;;
       ./*) continue ;;
       docker://*)
         case "$ref" in *@sha256:*) continue ;; esac

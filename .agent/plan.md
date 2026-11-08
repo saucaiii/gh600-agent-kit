@@ -14,13 +14,13 @@
   4. (after approval) Add tests: bash syntax, argument handling exit codes, pin check against the kit's own workflows, policy blocks agents from running `scripts/admin/` appliers. Tests use a stub `gh` on PATH, no network.
   5. (after approval) Add the `github-admin` Claude Code skill under `.claude/skills/` so agents in every downstream repo follow the admin rules.
   6. Human: extend `HUMAN_ONLY_SCRIPTS_RE` in `.agent-policy/policy.sh`. Proposed value:
-     `scripts/(agent/(approve-plan|close-task)|setup/(apply-github-settings|sync-kit)|release)\.sh|scripts/admin/(security-baseline|actions-policy)\.sh.*--apply`
+     `scripts/(agent/(approve-plan|close-task)|setup/(apply-github-settings|sync-kit)|release)\.sh|(security-baseline|actions-policy)\.sh.*apply|apply.*(security-baseline|actions-policy)\.sh`
      Agents keep the dry runs and read-only audits. This also closes an existing gap: `CLAUDE.md` calls `release.sh` and `sync-kit.sh` human-only, but the current regex does not block them.
 - **Success criteria (verifiable):**
-  - [ ] `tests/guardrails.sh` ends with `Failed: 0`, including the new admin checks
-  - [ ] Intent signal: every GH-100 skill row in `docs/gh100-map.md` points to a file that exists or is marked S with a lab note
-  - [ ] Appliers change nothing without `--apply`; audits never print secret values
-  - [ ] Only files in scope changed
+  - [x] `tests/guardrails.sh` ends with `Failed: 0`, including the new admin checks
+  - [x] Intent signal: every GH-100 skill row in `docs/gh100-map.md` points to a file that exists or is marked S with a lab note
+  - [x] Appliers change nothing without `--apply`; audits never print secret values
+  - [x] Only files in scope changed
 - **Risks + mitigations:**
   - Some APIs (artifact retention, fork PR approval, SHA pinning) are newer or plan-gated. Each apply step reports failure and continues instead of aborting.
   - Not tested against live GitHub from this session. Scripts are tested with a stub `gh`; first live run goes on gh600-lab with the dry run.

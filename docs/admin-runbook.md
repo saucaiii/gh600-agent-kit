@@ -89,7 +89,7 @@ Enterprise licensing is per unique user (one seat covers GHEC and GHES for the s
 
 ## Audit log *(org/enterprise)*
 
-Org and enterprise audit logs record who did what: membership, permission, settings, token, and app events. Retention on github.com: 180 days for most events, 7 days for Git events; stream to a SIEM for longer. Query with `gh api orgs/<org>/audit-log -f phrase='action:repo.create'`. This kit's agent-side equivalent is `.agent-control/audit.log`, read with `scripts/agent/audit-report.sh`.
+Org and enterprise audit logs record who did what: membership, permission, settings, token, and app events. Retention on github.com: 180 days for most events, 7 days for Git events; stream to a SIEM for longer. Query with `gh api -X GET orgs/<org>/audit-log -f phrase='action:repo.create'` (`-f` alone makes gh send a POST). This kit's agent-side equivalent is `.agent-control/audit.log`, read with `scripts/agent/audit-report.sh`.
 
 ## Actions reuse
 

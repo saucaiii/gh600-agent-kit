@@ -31,7 +31,7 @@ GH-600 certifies people, not code, so no repo can be "certified compliant". This
 | Lifecycle | `agent-lifecycle.md` |
 | Responsible AI | `CLAUDE.md` section, PR template checklist |
 | GH-100 admin | `scripts/admin/` audits and dry-run appliers, `github/actions-allowlist.txt`, `.claude/skills/github-admin/`, [`gh100-map.md`](gh100-map.md), [`admin-runbook.md`](admin-runbook.md). See below |
-| Self-test | `tests/guardrails.sh` (153 checks, 160 once the GH-100 policy line is in; runs on macOS bash 3.2) |
+| Self-test | `tests/guardrails.sh` (171 checks, 180 once the GH-100 policy line is in; runs on macOS bash 3.2) |
 
 ## Install
 
@@ -84,14 +84,14 @@ Run the appliers from a checkout of the target repo: `actions-policy.sh` only re
 **One-time human edit.** Agents cannot write `.agent-policy/`. Set this line in `.agent-policy/policy.sh` so the policy blocks agents from `--apply` (and from `release.sh` and `sync-kit.sh`, which `CLAUDE.md` already lists as human-only):
 
 ```bash
-HUMAN_ONLY_SCRIPTS_RE='scripts/(agent/(approve-plan|close-task)|setup/(apply-github-settings|sync-kit)|release)\.sh|scripts/admin/(security-baseline|actions-policy)\.sh.*--apply'
+HUMAN_ONLY_SCRIPTS_RE='scripts/(agent/(approve-plan|close-task)|setup/(apply-github-settings|sync-kit)|release)\.sh|(security-baseline|actions-policy)\.sh.*apply|apply.*(security-baseline|actions-policy)\.sh'
 ```
 
-`tests/guardrails.sh` skips those policy checks until the line is in, then runs them.
+`tests/guardrails.sh` skips those policy checks until the line is in, then runs them. Pattern matching can still be dodged by a determined agent (for example by splitting the word), so the scripts also refuse `--apply` inside an agent session or without an interactive terminal, and ask you to type the repo name.
 
 ## Tested
 
-`tests/guardrails.sh` runs 153 checks (160 with the GH-100 policy line) against a throwaway repo: every policy rule through both adapters (Claude and Copilot input formats), guardrail tamper attempts by file and by shell, plan approval binding, scope, fail-closed behaviour, retries and escalation, audit logging, session context, scope check on bash 3.2, JSON/shell syntax, and the GH-100 admin scripts against a stub `gh` (argument handling, read-only audits make no writes, dry runs make no writes, `--apply` hits the right endpoints, SHA pin check). All pass on macOS (bash 3.2). Workflow YAML parses; `actionlint` was not run.
+`tests/guardrails.sh` runs 171 checks (180 with the GH-100 policy line) against a throwaway repo: every policy rule through both adapters (Claude and Copilot input formats), guardrail tamper attempts by file and by shell, plan approval binding, scope, fail-closed behaviour, retries and escalation, audit logging, session context, scope check on bash 3.2, JSON/shell syntax, and the GH-100 admin scripts against a stub `gh` (argument handling, read-only audits make no writes, dry runs make no writes, `--apply` hits the right endpoints, SHA pin check). All pass on macOS (bash 3.2). Workflow YAML parses; `actionlint` was not run.
 
 **Not tested live:** a real Claude Code session, a real Copilot cloud agent run, and real GitHub API calls (the admin scripts were tested against a stub; run their dry runs on gh600-lab first). Run them in your gh600-lab repo first.
 

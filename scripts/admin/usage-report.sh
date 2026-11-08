@@ -34,12 +34,14 @@ flags=0
 echo "# Actions usage: $repo (since $since)"
 echo
 
-runs="$(gh api --paginate "repos/$repo/actions/runs?per_page=100&created=%3E%3D$since" 2>/dev/null \
-  | jq -s 'map(.workflow_runs // []) | add // []' 2>/dev/null || echo '[]')"
-[ -z "$runs" ] && runs='[]'
+runs_ok=true
+runs="$(admin_list "repos/$repo/actions/runs?per_page=100&created=%3E%3D$since" workflow_runs)" || { runs='[]'; runs_ok=false; }
 total="$(echo "$runs" | jq length)"
 echo "## Workflows ($total runs)"
-if [ "$total" -eq 0 ]; then
+echo "GitHub's run search returns at most 1,000 runs; very busy repos are undercounted."
+if ! $runs_ok; then
+  echo "_Not available._"
+elif [ "$total" -eq 0 ]; then
   echo "No runs in this window."
 else
   echo "| Workflow | Runs | Failed | Fail % | Avg run (min) | Avg wait (min) |"
@@ -59,7 +61,7 @@ fi
 echo
 
 echo "## Cache"
-cache="$(gh api "repos/$repo/actions/cache/usage" 2>/dev/null || true)"
+cache="$(admin_get "repos/$repo/actions/cache/usage" || true)"
 if [ -n "$cache" ]; then
   bytes="$(echo "$cache" | jq '.active_caches_size_in_bytes // 0')"
   echo "Active caches: $(echo "$cache" | jq '.active_caches_count // 0'), $(jq -n --argjson b "$bytes" '($b/1048576*10|round/10)') MB."
@@ -68,7 +70,7 @@ else echo "_Not available._"; fi
 echo
 
 echo "## Artifacts"
-arts="$(gh api --paginate "repos/$repo/actions/artifacts?per_page=100" 2>/dev/null | jq -s 'map(.artifacts // []) | add // []' 2>/dev/null || true)"
+arts="$(admin_list "repos/$repo/actions/artifacts?per_page=100" artifacts || true)"
 if [ -n "$arts" ]; then
   live="$(echo "$arts" | jq '[.[] | select(.expired|not)]')"
   abytes="$(echo "$live" | jq 'map(.size_in_bytes) | add // 0')"
@@ -79,8 +81,8 @@ echo
 
 if $billing; then
   echo "## Billing (best effort)"
-  me="$(gh api user 2>/dev/null | jq -r '.login // empty')"
-  bill="$(gh api "users/$me/settings/billing/usage" 2>/dev/null || true)"
+  me="$(admin_show user '.login // empty')"
+  bill="$(admin_get "users/$me/settings/billing/usage" || true)"
   if [ -n "$bill" ] && echo "$bill" | jq -e '.usageItems' >/dev/null 2>&1; then
     echo "| Product | Quantity | Net amount (USD) |"; echo "| --- | --- | --- |"
     echo "$bill" | jq -r '.usageItems | group_by(.product)[] | "| \(.[0].product) | \(map(.quantity // 0) | add * 100 | round / 100) | \(map(.netAmount // 0) | add * 100 | round / 100) |"'
@@ -90,5 +92,5 @@ if $billing; then
   echo
 fi
 
-echo "Flags: $flags. Rate limit left: $(gh api rate_limit 2>/dev/null | jq -r '.resources.core | "\(.remaining)/\(.limit)"' 2>/dev/null || echo unknown)."
+echo "Flags: $flags. Rate limit left: $(admin_show rate_limit '.resources.core | "\(.remaining)/\(.limit)"')."
 exit 0

@@ -31,16 +31,18 @@ done
 admin_need_tools
 admin_check_repo "$repo"
 export APPLY
+admin_confirm_apply "$repo"
 
 onoff() { if gh api "$1" >/dev/null 2>&1; then echo enabled; else echo "disabled or unknown"; fi; }
-field() { gh api "$1" 2>/dev/null | jq -r "$2" 2>/dev/null || echo unknown; }
+field() { admin_show "$1" "$2"; }
+nn() { echo "if $1 == null then \"unknown\" else $1 end"; }   # jq: keep false as false
 
 echo "Repo: $repo   Mode: $($APPLY && echo APPLY || echo DRY-RUN)"
 echo
 echo "Current state:"
 echo "  vulnerability alerts:          $(onoff "repos/$repo/vulnerability-alerts")"
-echo "  Dependabot security updates:   $(field "repos/$repo/automated-security-fixes" '.enabled // "unknown"')"
-echo "  private vulnerability reports: $(field "repos/$repo/private-vulnerability-reporting" '.enabled // "unknown"')"
+echo "  Dependabot security updates:   $(field "repos/$repo/automated-security-fixes" "$(nn .enabled)")"
+echo "  private vulnerability reports: $(field "repos/$repo/private-vulnerability-reporting" "$(nn .enabled)")"
 echo "  secret scanning:               $(field "repos/$repo" '.security_and_analysis.secret_scanning.status // "unknown"')"
 echo "  push protection:               $(field "repos/$repo" '.security_and_analysis.secret_scanning_push_protection.status // "unknown"')"
 echo "  CodeQL default setup:          $(field "repos/$repo/code-scanning/default-setup" '.state // "unknown"')"
